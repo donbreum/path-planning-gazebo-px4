@@ -24,12 +24,12 @@
 #define MAV_CMD_NAV_LAND_LOCAL 23
 #define MAV_CMD_NAV_TAKEOFF_LOCAL 24
 
-#define LOITER_TIME_SECONDS 20
-#define LOITER_RADIUS 15
+#define LOITER_TIME_SECONDS 5
+#define LOITER_RADIUS 25
 
 // when a new waypoint is loaded, distance in meters
 #define threshold_distance_to_waypoint 3
-#define threshold_distance_to_loiter_waypoint 50 // should be approx double radius distance
+#define threshold_distance_to_loiter_waypoint 25 // should be approx double radius distance
 class TopicInformation;
 using namespace std;
 
@@ -72,6 +72,7 @@ public:
   vector<double> get_target_heading_vector(float bearing);
   vector<LoiterCoordinates> get_loiter_target_coordinates(float lat, float lon, float radius);
   int get_closest_loiter_coordinate();
+  bool is_beyond_line_segment(float x1, float y1, float x2, float y2);
   
 private:
 
@@ -96,6 +97,8 @@ private:
   int current_loiter_index;
   clock_t start_time_loiter;
 
+  float target_height;
+
   float cur_pos_lat;
   float cur_pos_lon;
   float previous_wp_lat;
@@ -104,6 +107,8 @@ private:
   float next_wp_lon;
   float heading;
   float height;
+
+  
 };
 
 
