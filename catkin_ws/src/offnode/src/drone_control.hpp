@@ -73,6 +73,7 @@ public:
   vector<LoiterCoordinates> get_loiter_target_coordinates(float lat, float lon, float radius);
   int get_closest_loiter_coordinate();
   bool is_beyond_line_segment(float x1, float y1, float x2, float y2);
+  bool is_next_wp_loiter_wp(int current_wp_index);
   
 private:
 
