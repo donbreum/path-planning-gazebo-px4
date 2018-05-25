@@ -24,12 +24,12 @@
 #define MAV_CMD_NAV_LAND_LOCAL 23
 #define MAV_CMD_NAV_TAKEOFF_LOCAL 24
 
-#define LOITER_TIME_SECONDS 5
-#define LOITER_RADIUS 25
+#define LOITER_TIME_SECONDS 10
+#define LOITER_RADIUS 30
 
 // when a new waypoint is loaded, distance in meters
 #define threshold_distance_to_waypoint 3
-#define threshold_distance_to_loiter_waypoint 25 // should be approx double radius distance
+#define threshold_distance_to_loiter_waypoint 35 // should be approx double radius distance
 class TopicInformation;
 using namespace std;
 

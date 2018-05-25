@@ -277,8 +277,8 @@ void DroneControl::calculate_velocity_body(float bearing,
   double heading_y = sin(add_angles(double(-heading), M_PI/2.0));
   double bearing_to_wp_x = cos(add_angles(double(-bearing_pos_to_wp), M_PI/2.0));
   double bearing_to_wp_y = sin(add_angles(double(-bearing_pos_to_wp), M_PI/2.0));
-  double vel_x = heading_x * 4.0; // should be multiplied with some gain
-  double vel_y = heading_y * 4.0; // related to max speed
+  double vel_x = heading_x * 5.0; // should be multiplied with some gain
+  double vel_y = heading_y * 5.0; // related to max speed
 
   double diff_bearing = bearing - bearing_pos_to_wp;
 
@@ -371,19 +371,7 @@ int DroneControl::get_closest_loiter_coordinate(){
   return chosen_index;
 }
 void DroneControl::update_drone_position(){
-  // // test case
-  // loiter_coordinates = get_loiter_target_coordinates(55.060470, 10.589354, 100);
-  // cout << setprecision(9);
-  // for(int i = 0; i < loiter_coordinates.size(); i++){
-  //   cout << "coord lat: " << loiter_coordinates[i].lat << endl;
-  //   cout << "coord lon: " << loiter_coordinates[i].lon << endl;
-  // }
-  // int idx = get_closest_loiter_coordinate(55.054016, 10.592591);
-  // cout << "coord lat1111: " << loiter_coordinates[idx].lat << endl;
-  // cout << "coord lon1111: " << loiter_coordinates[idx].lon << endl;
-  // while(true){}
-  // cout << endl << endl << endl;
-  
+
   target_height = 5; // NEED TO MADE DIFFERENT!!
   float dist_to_next_wp = get_distance_to_current_waypoint();
   cout << "DISTANCE TO NEXT WP: " << dist_to_next_wp << endl;
@@ -409,8 +397,12 @@ void DroneControl::update_drone_position(){
   }
 
   float bearing = 0;
-  float bearing_pos_to_wp =0;
+  float bearing_pos_to_wp = 0;
   float cross_track_error = 0;
+  float wp0_lat = 0;
+  float wp0_lon = 0;
+  float wp1_lat = 0;
+  float wp1_lon = 0;
 
   int MAV_CMD =  waypoint_list[current_waypoint_index].command;
   cout << "current command: " << MAV_CMD<< endl;
@@ -424,37 +416,45 @@ void DroneControl::update_drone_position(){
       body_velocity.linear_z =  pid_height.calculate(target_alt, height); //set height 0
       cout << "diff altitude: " << abs(target_alt - height) << endl;
       if(height > 0.5){
-        takeoff_complete = true;
-        bearing = get_bearing_between_two_waypoints(previous_wp_lat,
-                                                          previous_wp_lon,
-                                                          next_wp_lat,
-                                                          next_wp_lon);
-        bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
-                                                                    cur_pos_lon,
-                                                                    next_wp_lat,
-                                                                    next_wp_lon);
+        wp0_lat = previous_wp_lat;
+        wp0_lon = previous_wp_lon;
+        wp1_lat = next_wp_lat;
+        wp1_lon = next_wp_lon;
+        //takeoff_complete = true;
+        // bearing = get_bearing_between_two_waypoints(previous_wp_lat,
+        //                                                   previous_wp_lon,
+        //                                                   next_wp_lat,
+        //                                                   next_wp_lon);
+        // bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
+        //                                                             cur_pos_lon,
+        //                                                             next_wp_lat,
+        //                                                             next_wp_lon);
 
-        cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
-                                                               dist_to_next_wp,
-                                                               bearing);
+        // cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
+        //                                                        dist_to_next_wp,
+        //                                                        bearing);
 
 
       }
       break;
     }
     case MAV_CMD_NAV_WAYPOINT:{
-      bearing = get_bearing_between_two_waypoints(previous_wp_lat,
-                                                        previous_wp_lon,
-                                                        next_wp_lat,
-                                                        next_wp_lon);
-      bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
-                                                                  cur_pos_lon,
-                                                                  next_wp_lat,
-                                                                  next_wp_lon);
+        wp0_lat = previous_wp_lat;
+        wp0_lon = previous_wp_lon;
+        wp1_lat = next_wp_lat;
+        wp1_lon = next_wp_lon;
+      // bearing = get_bearing_between_two_waypoints(previous_wp_lat,
+      //                                                   previous_wp_lon,
+      //                                                   next_wp_lat,
+      //                                                   next_wp_lon);
+      // bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
+      //                                                             cur_pos_lon,
+      //                                                             next_wp_lat,
+      //                                                             next_wp_lon);
 
-      cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
-                                                             dist_to_next_wp,
-                                                             bearing);
+      // cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
+      //                                                        dist_to_next_wp,
+      //                                                        bearing);
 
     // calculate_velocity_body(bearing, heading, height, bearing_pos_to_wp,
     //                         cross_track_error);
@@ -502,18 +502,22 @@ void DroneControl::update_drone_position(){
       // cout << "next loiter coord:" << endl;
       // cout << next_loiter_lat << ", " << next_loiter_lon << endl;
 
-      bearing = get_bearing_between_two_waypoints(prev_loiter_lat,
-                                                  prev_loiter_lon,
-                                                  next_loiter_lat,
-                                                  next_loiter_lon);
-      bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
-                                                            cur_pos_lon,
-                                                            next_loiter_lat,
-                                                            next_loiter_lon);
-
-      cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
-                                                      dist_to_loiter_pt,
-                                                      bearing);
+      // bearing = get_bearing_between_two_waypoints(prev_loiter_lat,
+      //                                             prev_loiter_lon,
+      //                                             next_loiter_lat,
+      //                                             next_loiter_lon);
+      // bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
+      //                                                       cur_pos_lon,
+      //                                                       next_loiter_lat,
+      //                                                       next_loiter_lon);
+      wp0_lat = prev_loiter_lat;
+      wp0_lon = prev_loiter_lon;
+      wp1_lat = next_loiter_lat;
+      wp1_lon = next_loiter_lon;
+      dist_to_next_wp = dist_to_loiter_pt;
+      // cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
+      //                                                 dist_to_loiter_pt,
+      //                                                 bearing);
 
       if(dist_to_loiter_pt < threshold_distance_to_waypoint || 
          is_beyond_line_segment(prev_loiter_lat, prev_loiter_lon, next_loiter_lat, next_loiter_lon)){
@@ -523,14 +527,7 @@ void DroneControl::update_drone_position(){
           current_loiter_index++;
         }
       }
-      // float x1 = previous_wp_lat;
-      // float y1 = previous_wp_lon;
-      // float x2 = next_wp_lat;
-      // float y2 = next_wp_lon;
-      // if(is_beyond_line_segment(prev_loiter_lat, prev_loiter_lon, next_loiter_lat, next_loiter_lon)){
-      //   current_loiter_index++;
-      //   cout << "ADDING IN LINE SEGMENT" << endl;
-      // }
+
       cout << "CURRENT LOITER INDEX: " << current_loiter_index << endl;
       double duration = ((clock() - start_time_loiter) / double(CLOCKS_PER_SEC)*10.0);
       cout << "duration: " << duration << " seconds" << endl;
@@ -549,18 +546,21 @@ void DroneControl::update_drone_position(){
     //   break;
     // }
     case MAV_CMD_NAV_LAND:{
-      bearing = get_bearing_between_two_waypoints(previous_wp_lat,
-                                                        previous_wp_lon,
-                                                        next_wp_lat,
-                                                        next_wp_lon);
-      bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
-                                                                  cur_pos_lon,
-                                                                  next_wp_lat,
-                                                                  next_wp_lon);
-
-      cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
-                                                             dist_to_next_wp,
-                                                             bearing);
+      wp0_lat = previous_wp_lat;
+      wp0_lon = previous_wp_lon;
+      wp1_lat = next_wp_lat;
+      wp1_lon = next_wp_lon;
+      // bearing = get_bearing_between_two_waypoints(previous_wp_lat,
+      //                                                   previous_wp_lon,
+      //                                                   next_wp_lat,
+      //                                                   next_wp_lon);
+      // bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
+      //                                                             cur_pos_lon,
+      //                                                             next_wp_lat,
+      //                                                             next_wp_lon);
+      // cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
+      //                                                        dist_to_next_wp,
+      //                                                        bearing);
       target_height = 0; 
       break;
     }
@@ -570,7 +570,20 @@ void DroneControl::update_drone_position(){
       break;
       }
   }
-  
+
+  bearing = get_bearing_between_two_waypoints(wp0_lat,
+                                              wp0_lon,
+                                              wp1_lat,
+                                              wp1_lon);
+  bearing_pos_to_wp = get_bearing_between_two_waypoints(cur_pos_lat,
+                                                        cur_pos_lon,
+                                                        wp1_lat,
+                                                        wp1_lon);
+
+  cross_track_error = calculate_cross_track_error(bearing_pos_to_wp,
+                                                  dist_to_next_wp,
+                                                  bearing);
+
   calculate_velocity_body(bearing, bearing_pos_to_wp,
                         cross_track_error);
   set_velocity_body();
