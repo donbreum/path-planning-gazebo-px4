@@ -15,8 +15,8 @@
 #include <limits>
 
 #define MAV_CMD_NAV_WAYPOINT 16
-#define MAV_CMD_NAV_LOITER_UNLIM 17
-#define MAV_CMD_NAV_LOITER_TURNS 18
+#define MAV_CMD_NAV_LOITER_UNLIM 17 // not implemented
+#define MAV_CMD_NAV_LOITER_TURNS 18 // implemented, but not supported by QGroundControl
 #define MAV_CMD_NAV_LOITER_TIME 19
 #define MAV_CMD_NAV_RETURN_TO_LAUNCH 20
 #define MAV_CMD_NAV_LAND 21
@@ -65,9 +65,10 @@ public:
   double get_bearing_between_two_waypoints(float current_lat, float current_lon,
                                            float target_lat, float target_lon);
   float add_angles(float a1, float a2);
-  void calculate_velocity_body(float bearing, float bearing_pos_to_wp, float cross_track_err);
-  void calculate_velocity_angular(float bearing, float heading);
-  void calculate_velocity_vertical(float target_height, float height);
+  void calculate_velocity_body(float &bearing, float &bearing_pos_to_wp, float &cross_track_err);
+  void calculate_velocity_angular(float &bearing, float &heading);
+  void calculate_velocity_vertical(float &target_height, float &height);
+  void calculate_velocity_heading(float &bearing, float &bearing_pos_to_wp, float &cross_track_err);
   void set_velocity_body();
   vector<double> get_target_heading_vector(float bearing);
   vector<LoiterCoordinates> get_loiter_target_coordinates(float lat, float lon, float radius);
@@ -95,7 +96,8 @@ private:
 
   bool takeoff_complete;
   bool nav_loiter;
-  float loiter_wp_time;
+  float loiter_param1; // time or turns
+  float loiter_turns; 
   float loiter_radius;
   int current_loiter_index;
   clock_t start_time_loiter;

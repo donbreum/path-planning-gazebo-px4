@@ -227,7 +227,7 @@ double DroneControl::get_bearing_between_two_waypoints(float current_lat,
   return angle_rad; // return in radians
   //return angle; // return angle in degrees
 }
-void DroneControl::calculate_velocity_angular(float bearing, float heading){
+void DroneControl::calculate_velocity_angular(float &bearing, float &heading){
 
   double shortest_dist = angles::shortest_angular_distance(
     heading, bearing);
@@ -240,37 +240,12 @@ void DroneControl::calculate_velocity_angular(float bearing, float heading){
   double z_angular_velocity = pid_heading.calculate(0, shortest_dist);
   body_velocity.angular_z = z_angular_velocity;
 }
-void DroneControl::calculate_velocity_vertical(float target_alt, float cur_alt){
+void DroneControl::calculate_velocity_vertical(float &target_alt, float &cur_alt){
   // target height is fixed to 5 meters atm.
   double vel_z = pid_height.calculate(target_alt, cur_alt);
   body_velocity.linear_z = vel_z;
 }
-void DroneControl::set_velocity_body(){
-  // vector<float> position_data = tp.get_position_data();
-  // float height = position_data[2];
-
-  move_msg.twist.linear.z = body_velocity.linear_z;
-
-  if(cur_altitude > 2){
-    // move_msg.twist.angular.z = z_angular_velocity;
-    move_msg.twist.angular.z = body_velocity.angular_z;
-    // move_msg.twist.linear.x = 5.0 * x_vec;
-    // move_msg.twist.linear.y = 5.0 * y_vec;
-    move_msg.twist.linear.x = body_velocity.linear_x;
-    move_msg.twist.linear.y = body_velocity.linear_y;
-    // cout << "twist.linear.x: " << body_velocity.linear_x
-    //  << " twist.linear.y: " << body_velocity.linear_y << endl;
-  }
-
-  tp.set_velocity(move_msg);
-}
-void DroneControl::calculate_velocity_body(float bearing,
-                                           float bearing_pos_to_wp,
-                                           float cross_track_err){
-
-  calculate_velocity_angular(bearing, heading);
-  calculate_velocity_vertical(target_altitude, cur_altitude);
-  
+void DroneControl::calculate_velocity_heading(float &bearing, float &bearing_pos_to_wp, float &cross_track_err){
   double heading_x = cos(add_angles(double(-heading), M_PI/2.0));
   double heading_y = sin(add_angles(double(-heading), M_PI/2.0));
   double bearing_to_wp_x = cos(add_angles(double(-bearing_pos_to_wp), M_PI/2.0));
@@ -299,6 +274,33 @@ void DroneControl::calculate_velocity_body(float bearing,
 
   body_velocity.linear_x = vel_x;
   body_velocity.linear_y = vel_y;
+}
+void DroneControl::set_velocity_body(){
+
+  move_msg.twist.linear.z = body_velocity.linear_z;
+  // to make realistic, the drone will start moving forward
+  // as soon the altitude is a few cm above ground
+  if(cur_altitude > 0.1){
+    // move_msg.twist.angular.z = z_angular_velocity;
+    move_msg.twist.angular.z = body_velocity.angular_z;
+    // move_msg.twist.linear.x = 5.0 * x_vec;
+    // move_msg.twist.linear.y = 5.0 * y_vec;
+    move_msg.twist.linear.x = body_velocity.linear_x;
+    move_msg.twist.linear.y = body_velocity.linear_y;
+    // cout << "twist.linear.x: " << body_velocity.linear_x
+    //  << " twist.linear.y: " << body_velocity.linear_y << endl;
+  }
+
+  tp.set_velocity(move_msg);
+}
+void DroneControl::calculate_velocity_body(float &bearing,
+                                           float &bearing_pos_to_wp,
+                                           float &cross_track_err){
+
+  calculate_velocity_angular(bearing, heading);
+  calculate_velocity_vertical(target_altitude, cur_altitude);
+  calculate_velocity_heading(bearing, bearing_pos_to_wp, cross_track_err);
+
 }
 #pragma region cross_track_err
 float DroneControl::calculate_cross_track_error(float bearing_target,
@@ -425,26 +427,27 @@ void DroneControl::update_drone_position(){
         init_loiter();
       }
       update_loiter_coords(wp0_lat, wp0_lon, wp1_lat, wp1_lon, dist_to_next_wp);
-
-
-
-      cout << "CURRENT LOITER INDEX: " << current_loiter_index << endl;
       double duration = ((clock() - start_time_loiter) / double(CLOCKS_PER_SEC)*10.0);
-      cout << "duration: " << duration << " seconds" << endl;
-      cout << "duration for loiter: " << loiter_wp_time << endl;
       // loiter is done if duration is larger than the set loiter time
-      if(duration > loiter_wp_time){
-        cout << "STOP LOITER NOW!!" << endl;
+      if(duration > loiter_param1){
         nav_loiter = false;
         // fly towards next waypoint by setting current wp as wp command.
         waypoint_list[current_waypoint_index].command = MAV_CMD_NAV_WAYPOINT;
       }
       break;
     }
-    // case MAV_CMD_NAV_LOITER_UNLIM:{
-    //   body_velocity.linear_z =  pid_height.calculate(0, height); //set height 0
-    //   break;
-    // }
+    case MAV_CMD_NAV_LOITER_TURNS:{ // not tested, not supported by QGC
+      if(!nav_loiter){
+        init_loiter();
+      }
+      update_loiter_coords(wp0_lat, wp0_lon, wp1_lat, wp1_lon, dist_to_next_wp);
+
+      if(loiter_turns > loiter_param1){
+        nav_loiter = false;
+        waypoint_list[current_waypoint_index].command = MAV_CMD_NAV_WAYPOINT;
+      }
+      break;
+    }
     case MAV_CMD_NAV_LAND:{
       wp0_lat = previous_wp_lat;
       wp0_lon = previous_wp_lon;
@@ -532,8 +535,8 @@ bool DroneControl::is_next_wp_loiter_wp(int current_wp_index){
 void DroneControl::init_loiter(){
   // get loiter time from waypoint
   vector<float> position_data = tp.get_position_data();
-  loiter_wp_time = waypoint_list[current_waypoint_index].param1; // needs to be checked
-  cout << "LOITER TIME: "<< loiter_wp_time << endl;
+  loiter_param1 = waypoint_list[current_waypoint_index].param1; // needs to be checked
+  cout << "LOITER TIME: "<< loiter_param1 << endl;
   // set time ref
   start_time_loiter = clock();
   nav_loiter = true;
@@ -543,6 +546,7 @@ void DroneControl::init_loiter(){
   // get first index/point for loiter
   // obtain point closest to uav
   current_loiter_index = get_closest_loiter_coordinate();
+  loiter_turns = 0;
 }
 void DroneControl::update_loiter_coords(float &wp0_lat, float &wp0_lon, float &wp1_lat, float &wp1_lon, float &dist_2_wp){
   // cout << setprecision(9);
@@ -572,8 +576,10 @@ void DroneControl::update_loiter_coords(float &wp0_lat, float &wp0_lon, float &w
     is_beyond_line_segment(prev_loiter_lat, prev_loiter_lon, next_loiter_lat, next_loiter_lon)){
   if(current_loiter_index == loiter_coordinates.size()-1){
     current_loiter_index = 0;
+    loiter_turns++;
   }else{
     current_loiter_index++;
+    loiter_turns++;
   }
 }
 }
