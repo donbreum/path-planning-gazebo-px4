@@ -20,11 +20,9 @@ DroneControl::DroneControl(){
   nav_loiter = false;
 
 }
-
 DroneControl::DroneControl(TopicInformation tp){
   //topic_message = tp
 }
-
 vector<double> DroneControl::get_target_heading_vector(float bearing){
   double x_vec = add_angles(double(bearing), M_PI/2.0);
   double y_vec = add_angles(double(bearing), M_PI/2.0);
@@ -242,18 +240,18 @@ void DroneControl::calculate_velocity_angular(float bearing, float heading){
   double z_angular_velocity = pid_heading.calculate(0, shortest_dist);
   body_velocity.angular_z = z_angular_velocity;
 }
-void DroneControl::calculate_velocity_vertical(float target_height, float height){
+void DroneControl::calculate_velocity_vertical(float target_alt, float cur_alt){
   // target height is fixed to 5 meters atm.
-  double vel_z = pid_height.calculate(target_height, height);
+  double vel_z = pid_height.calculate(target_alt, cur_alt);
   body_velocity.linear_z = vel_z;
 }
 void DroneControl::set_velocity_body(){
-  vector<float> position_data = tp.get_position_data();
-  float height = position_data[2];
+  // vector<float> position_data = tp.get_position_data();
+  // float height = position_data[2];
 
   move_msg.twist.linear.z = body_velocity.linear_z;
 
-  if(height > 2){
+  if(cur_altitude > 2){
     // move_msg.twist.angular.z = z_angular_velocity;
     move_msg.twist.angular.z = body_velocity.angular_z;
     // move_msg.twist.linear.x = 5.0 * x_vec;
@@ -271,7 +269,7 @@ void DroneControl::calculate_velocity_body(float bearing,
                                            float cross_track_err){
 
   calculate_velocity_angular(bearing, heading);
-  calculate_velocity_vertical(target_height, height);
+  calculate_velocity_vertical(target_altitude, cur_altitude);
   
   double heading_x = cos(add_angles(double(-heading), M_PI/2.0));
   double heading_y = sin(add_angles(double(-heading), M_PI/2.0));
@@ -372,7 +370,6 @@ int DroneControl::get_closest_loiter_coordinate(){
 }
 void DroneControl::update_drone_position(){
 
-  target_height = 5; // NEED TO MADE DIFFERENT!!
   float dist_to_next_wp = get_distance_to_current_waypoint();
   cout << "DISTANCE TO NEXT WP: " << dist_to_next_wp << endl;
 
@@ -381,7 +378,7 @@ void DroneControl::update_drone_position(){
       current_waypoint_index++;
     }
   }else if(waypoint_list[current_waypoint_index+1].command == MAV_CMD_NAV_LAND){
-    target_height = 0;
+    target_altitude = 0;
   }
   
   if(dist_to_next_wp < threshold_distance_to_waypoint && !nav_loiter){
@@ -407,10 +404,10 @@ void DroneControl::update_drone_position(){
 
   switch(MAV_CMD){
     case MAV_CMD_NAV_TAKEOFF:{
-      float target_alt = waypoint_list[current_waypoint_index].z_alt; // target altitude
-      body_velocity.linear_z =  pid_height.calculate(target_alt, height); //set height 0
-      cout << "diff altitude: " << abs(target_alt - height) << endl;
-      if(height > 0.5){
+      // float target_alt = waypoint_list[current_waypoint_index].z_alt; // target altitude
+      // body_velocity.linear_z =  pid_height.calculate(target_alt, cur_altitude); //set height 0
+      //cout << "diff altitude: " << abs(target_alt - height) << endl;
+      if(cur_altitude > 0.5){
         wp0_lat = previous_wp_lat;
         wp0_lon = previous_wp_lon;
         wp1_lat = next_wp_lat;
@@ -498,12 +495,12 @@ void DroneControl::update_drone_position(){
       wp0_lon = previous_wp_lon;
       wp1_lat = next_wp_lat;
       wp1_lon = next_wp_lon;
-      target_height = 0; 
+      target_altitude = 0; 
       break;
     }
     default:{
       cout << "NO VALID COMMAND FROM MAVLINK - LAND AT LOCATION" << endl;
-      target_height = 0;
+      target_altitude = 0;
       break;
       }
   }
@@ -526,7 +523,6 @@ void DroneControl::update_drone_position(){
   set_velocity_body();
   cout << endl << "------------------" << endl;
 }
-
 void DroneControl::update_drone_data(){
   // these must be initaliezed in the constructor
   vector<float> position_data = tp.get_position_data();
@@ -534,13 +530,14 @@ void DroneControl::update_drone_data(){
   cur_pos_lon = position_data[1];
   previous_wp_lat = waypoint_list[current_waypoint_index].x_lat;;
   previous_wp_lon = waypoint_list[current_waypoint_index].y_long;
+  target_altitude = waypoint_list[current_waypoint_index].z_alt;
   next_wp_lat = waypoint_list[current_waypoint_index+1].x_lat;
   next_wp_lon = waypoint_list[current_waypoint_index+1].y_long;
   heading = angles::from_degrees(position_data[3]);
-  height = position_data[2];
+  cur_altitude = position_data[2]; 
+  cout << "HEIGHT OF DRONE: " << cur_altitude << endl;
   //cout << "\n\nTIME: " << waypoint_list[current_waypoint_index+1].param1 << endl << endl;
 }
-
 bool DroneControl::is_beyond_line_segment(float x1, float y1, float x2, float y2){
     // method from paparazzi
     // https://goo.gl/xA5bHx

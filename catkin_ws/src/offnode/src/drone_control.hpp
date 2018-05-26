@@ -24,7 +24,7 @@
 #define MAV_CMD_NAV_LAND_LOCAL 23
 #define MAV_CMD_NAV_TAKEOFF_LOCAL 24
 
-#define LOITER_TIME_SECONDS 10
+#define LOITER_TIME_SECONDS 15
 #define LOITER_RADIUS 30
 
 // when a new waypoint is loaded, distance in meters
@@ -87,7 +87,7 @@ private:
   PID pid_height = PID(0.1, 0.5, -0.5, 1.0, 0.0, 0.0);
   //PID pid_heading = PID(0.1, 0.5, -0.5, 0.05, 0.05, 0.0001);
   PID pid_heading = PID(0.1, 0.5, -0.5, 1.0, 0.1, 0.01);
-  PID pid_lat_cmd = PID(0.1, 3.0, -3.0, 0.3, 0.1, 0.001);
+  PID pid_lat_cmd = PID(0.01, 3.0, -3.0, 0.3, 0.1, 0.01);
   bool is_north;
   bool is_east;
 
@@ -98,7 +98,7 @@ private:
   int current_loiter_index;
   clock_t start_time_loiter;
 
-  float target_height;
+  float target_altitude;
 
   float cur_pos_lat;
   float cur_pos_lon;
@@ -107,10 +107,6 @@ private:
   float next_wp_lat;
   float next_wp_lon;
   float heading;
-  float height;
-
-  
+  float cur_altitude;
 };
-
-
 #endif
