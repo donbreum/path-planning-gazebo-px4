@@ -132,7 +132,7 @@ float DroneControl::get_distance_to_current_waypoint(){
   float distance_to_next =
       distance_between_two_coords(current_lat, current_long,
                                   next_lat, next_long);
-  cout << "distance left: " << distance_to_next << endl;
+  //cout << "distance left: " << distance_to_next << endl;
   return distance_to_next;
 }
 float DroneControl::add_angles(float angle1, float angle2){
@@ -404,9 +404,6 @@ void DroneControl::update_drone_position(){
 
   switch(MAV_CMD){
     case MAV_CMD_NAV_TAKEOFF:{
-      // float target_alt = waypoint_list[current_waypoint_index].z_alt; // target altitude
-      // body_velocity.linear_z =  pid_height.calculate(target_alt, cur_altitude); //set height 0
-      //cout << "diff altitude: " << abs(target_alt - height) << endl;
       if(cur_altitude > 0.5){
         wp0_lat = previous_wp_lat;
         wp0_lon = previous_wp_lon;
@@ -425,60 +422,18 @@ void DroneControl::update_drone_position(){
     case MAV_CMD_NAV_LOITER_TIME:{
       // initialize first time it enters at every loiter waypoint
       if(!nav_loiter){
-        // get loiter time from waypoint
-        vector<float> position_data = tp.get_position_data();
-        loiter_time = waypoint_list[current_waypoint_index+1].param1; // needs to be checked
-        cout << "LOITER TIME: "<< loiter_time << endl;
-        // set time ref
-        start_time_loiter = clock();
-        nav_loiter = true;
-        // get loiter coordinates
-        loiter_coordinates = get_loiter_target_coordinates(previous_wp_lat, previous_wp_lon, LOITER_RADIUS);
-
-        // get first index/point for loiter
-        // obtain point closest to uav
-        current_loiter_index = get_closest_loiter_coordinate();
-
+        init_loiter();
       }
+      update_loiter_coords(wp0_lat, wp0_lon, wp1_lat, wp1_lon, dist_to_next_wp);
 
-      // cout << setprecision(9);
-      // cout << "list of loiter coord:" << endl;
-      // for(int i = 0; i < loiter_coordinates.size(); i++){
-      //   cout << loiter_coordinates[i].lat << ", " << loiter_coordinates[i].lon << endl;
-      // }
-      float prev_loiter_lat = loiter_coordinates[current_loiter_index].lat;
-      float prev_loiter_lon = loiter_coordinates[current_loiter_index].lon;
 
-      int next_index = current_loiter_index + 1;
-      if(current_loiter_index == loiter_coordinates.size() - 1){
-        next_index = 0;
-      }
-      float next_loiter_lat = loiter_coordinates[next_index].lat;
-      float next_loiter_lon = loiter_coordinates[next_index].lon;
-      double dist_to_loiter_pt = distance_between_two_coords(cur_pos_lat, cur_pos_lon, next_loiter_lat, next_loiter_lon);
-      cout << "DIST TO NEXT LOITER PT: " << dist_to_loiter_pt << endl;
-
-      wp0_lat = prev_loiter_lat;
-      wp0_lon = prev_loiter_lon;
-      wp1_lat = next_loiter_lat;
-      wp1_lon = next_loiter_lon;
-      dist_to_next_wp = dist_to_loiter_pt;
-
-      if(dist_to_loiter_pt < threshold_distance_to_waypoint || 
-         is_beyond_line_segment(prev_loiter_lat, prev_loiter_lon, next_loiter_lat, next_loiter_lon)){
-        if(current_loiter_index == loiter_coordinates.size()-1){
-          current_loiter_index = 0;
-        }else{
-          current_loiter_index++;
-        }
-      }
 
       cout << "CURRENT LOITER INDEX: " << current_loiter_index << endl;
       double duration = ((clock() - start_time_loiter) / double(CLOCKS_PER_SEC)*10.0);
       cout << "duration: " << duration << " seconds" << endl;
-      // cout << "duration compare: " << LOITER_TIME_SECONDS << endl;
+      cout << "duration for loiter: " << loiter_wp_time << endl;
       // loiter is done if duration is larger than the set loiter time
-      if(duration > LOITER_TIME_SECONDS){
+      if(duration > loiter_wp_time){
         cout << "STOP LOITER NOW!!" << endl;
         nav_loiter = false;
         // fly towards next waypoint by setting current wp as wp command.
@@ -574,3 +529,52 @@ bool DroneControl::is_next_wp_loiter_wp(int current_wp_index){
     }
   return is_loiter;
 }
+void DroneControl::init_loiter(){
+  // get loiter time from waypoint
+  vector<float> position_data = tp.get_position_data();
+  loiter_wp_time = waypoint_list[current_waypoint_index].param1; // needs to be checked
+  cout << "LOITER TIME: "<< loiter_wp_time << endl;
+  // set time ref
+  start_time_loiter = clock();
+  nav_loiter = true;
+  // get loiter coordinates
+  loiter_coordinates = get_loiter_target_coordinates(previous_wp_lat, previous_wp_lon, LOITER_RADIUS);
+
+  // get first index/point for loiter
+  // obtain point closest to uav
+  current_loiter_index = get_closest_loiter_coordinate();
+}
+void DroneControl::update_loiter_coords(float &wp0_lat, float &wp0_lon, float &wp1_lat, float &wp1_lon, float &dist_2_wp){
+  // cout << setprecision(9);
+  // cout << "list of loiter coord:" << endl;
+  // for(int i = 0; i < loiter_coordinates.size(); i++){
+  //   cout << loiter_coordinates[i].lat << ", " << loiter_coordinates[i].lon << endl;
+  // }
+  float prev_loiter_lat = loiter_coordinates[current_loiter_index].lat;
+  float prev_loiter_lon = loiter_coordinates[current_loiter_index].lon;
+
+  int next_index = current_loiter_index + 1;
+  if(current_loiter_index == loiter_coordinates.size() - 1){
+    next_index = 0;
+  }
+  float next_loiter_lat = loiter_coordinates[next_index].lat;
+  float next_loiter_lon = loiter_coordinates[next_index].lon;
+  double dist_to_loiter_pt = distance_between_two_coords(cur_pos_lat, cur_pos_lon, next_loiter_lat, next_loiter_lon);
+  cout << "DIST TO NEXT LOITER PT: " << dist_to_loiter_pt << endl;
+
+  wp0_lat = prev_loiter_lat;
+  wp0_lon = prev_loiter_lon;
+  wp1_lat = next_loiter_lat;
+  wp1_lon = next_loiter_lon;
+  dist_2_wp = dist_to_loiter_pt;
+
+  if(dist_to_loiter_pt < threshold_distance_to_waypoint || 
+    is_beyond_line_segment(prev_loiter_lat, prev_loiter_lon, next_loiter_lat, next_loiter_lon)){
+  if(current_loiter_index == loiter_coordinates.size()-1){
+    current_loiter_index = 0;
+  }else{
+    current_loiter_index++;
+  }
+}
+}
+

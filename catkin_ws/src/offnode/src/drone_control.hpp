@@ -74,7 +74,9 @@ public:
   int get_closest_loiter_coordinate();
   bool is_beyond_line_segment(float x1, float y1, float x2, float y2);
   bool is_next_wp_loiter_wp(int current_wp_index);
-  
+  void init_loiter();
+  void update_loiter_coords(float &wp0_lat, float &wp0_lon, float &wp1_lat, float &wp1_lon, float &dist_2_wp);
+
 private:
 
   TopicInformation tp;
@@ -93,7 +95,7 @@ private:
 
   bool takeoff_complete;
   bool nav_loiter;
-  float loiter_time;
+  float loiter_wp_time;
   float loiter_radius;
   int current_loiter_index;
   clock_t start_time_loiter;
