@@ -13,6 +13,10 @@
 #include <ctime>
 #include <numeric>
 #include <limits>
+#include <fstream>
+#include <stdio.h>
+#include <vector>
+#include <array>
 
 #define MAV_CMD_NAV_WAYPOINT 16
 #define MAV_CMD_NAV_LOITER_UNLIM 17 // not implemented
@@ -20,16 +24,19 @@
 #define MAV_CMD_NAV_LOITER_TIME 19
 #define MAV_CMD_NAV_RETURN_TO_LAUNCH 20
 #define MAV_CMD_NAV_LAND 21
-#define MAV_CMD_NAV_TAKEOFF 22
-#define MAV_CMD_NAV_LAND_LOCAL 23
-#define MAV_CMD_NAV_TAKEOFF_LOCAL 24
+#define MAV_CMD_NAV_TAKEOFF 22 
+#define MAV_CMD_NAV_LAND_LOCAL 23 // not implemented
+#define MAV_CMD_NAV_TAKEOFF_LOCAL 24 // not implemented
 
 #define LOITER_TIME_SECONDS 15
-#define LOITER_RADIUS 30
+#define LOITER_RADIUS 15
+#define MAX_GROUND_SPEED 5
+#define NUMBERS_OF_INTERPOLATION_POINTS 5
 
 // when a new waypoint is loaded, distance in meters
-#define threshold_distance_to_waypoint 3
-#define threshold_distance_to_loiter_waypoint 35 // should be approx double radius distance
+#define threshold_distance_to_waypoint 1
+#define threshold_distance_to_loiter_waypoint 20 // should be approx double radius distance
+#define THRESHOLD_DISTANCE_LANDING_WP_APPROACH 30
 class TopicInformation;
 using namespace std;
 
@@ -44,6 +51,19 @@ struct BodyVelocity{
   double linear_z;
   double angular_z;
 };
+
+typedef std::vector<std::array<float,2>> TPointList2D;
+
+template <typename T>
+inline T GetIndexClamped(const std::vector<T>& points, int index)
+{
+    if (index < 0)
+        return points[0];
+    else if (index >= int(points.size()))
+        return points.back();
+    else
+        return points[index];
+}
 
 class DroneControl{
 
@@ -60,8 +80,8 @@ public:
   float get_distance_to_current_waypoint();
   double get_bearing_to_current_waypoint();
   double get_bearing_to_current_waypoint_simple();
-  float calculate_cross_track_error(float bearing_target, float distance_to_wp,
-                                    float bearing_wp_to_wp);
+  float calculate_cross_track_error(float &bearing_target, float &distance_to_wp,
+                                    float &bearing_wp_to_wp);
   double get_bearing_between_two_waypoints(float current_lat, float current_lon,
                                            float target_lat, float target_lon);
   float add_angles(float a1, float a2);
@@ -77,9 +97,12 @@ public:
   bool is_next_wp_loiter_wp(int current_wp_index);
   void init_loiter();
   void update_loiter_coords(float &wp0_lat, float &wp0_lon, float &wp1_lat, float &wp1_lon, float &dist_2_wp);
+  void create_path_with_splines();
+  float CubicHermite(float A, float B, float C, float D, float t);
 
 private:
 
+  ofstream data_file;
   TopicInformation tp;
   std::vector<mavros_msgs::Waypoint> waypoint_list;
   geometry_msgs::TwistStamped move_msg;
@@ -88,21 +111,25 @@ private:
   BodyVelocity body_velocity;
   vector<LoiterCoordinates> loiter_coordinates;
   PID pid_height = PID(0.1, 0.5, -0.5, 1.0, 0.0, 0.0);
+  //PID pid_landing = PID(0.1, 0.5, -0.25, 1.0, 0.0, 0.0);
   //PID pid_heading = PID(0.1, 0.5, -0.5, 0.05, 0.05, 0.0001);
   PID pid_heading = PID(0.1, 0.5, -0.5, 1.0, 0.1, 0.01);
-  PID pid_lat_cmd = PID(0.01, 3.0, -3.0, 0.3, 0.1, 0.01);
+  PID pid_lat_cmd = PID(0.01, 3.0, -3.0, 0.6, 0.1, 0.1); // 0.01, 3.0, -3.0, 0.3, 0.1, 0.01);
   bool is_north;
   bool is_east;
 
   bool takeoff_complete;
   bool nav_loiter;
-  float loiter_param1; // time or turns
+  bool land_initiated = false;
+  float loiter_param1; // time OR turns
   float loiter_turns; 
   float loiter_radius;
   int current_loiter_index;
   clock_t start_time_loiter;
 
   float target_altitude;
+  float ground_speed;
+  float ground_speed_target;
 
   float cur_pos_lat;
   float cur_pos_lon;
