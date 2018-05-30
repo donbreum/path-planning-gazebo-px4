@@ -31,10 +31,10 @@
 #define LOITER_TIME_SECONDS 15
 #define LOITER_RADIUS 15
 #define MAX_GROUND_SPEED 5
-#define NUMBERS_OF_INTERPOLATION_POINTS 5
+#define NUMBERS_OF_INTERPOLATION_POINTS 2
 
 // when a new waypoint is loaded, distance in meters
-#define threshold_distance_to_waypoint 1
+#define threshold_distance_to_waypoint 10
 #define threshold_distance_to_loiter_waypoint 20 // should be approx double radius distance
 #define THRESHOLD_DISTANCE_LANDING_WP_APPROACH 30
 class TopicInformation;
@@ -55,7 +55,7 @@ struct BodyVelocity{
 typedef std::vector<std::array<float,2>> TPointList2D;
 
 template <typename T>
-inline T GetIndexClamped(const std::vector<T>& points, int index)
+inline T get_index_clamped(const std::vector<T>& points, int index)
 {
     if (index < 0)
         return points[0];
@@ -71,8 +71,13 @@ public:
 
   DroneControl();
   DroneControl(TopicInformation tp);
-  void update_drone_data();
+
   void update_drone_position();
+
+
+private:
+
+  void update_drone_data();
   float distance_between_two_coords(float lat1, float lon1, float lat2,
                                     float lon2);
   float distance_between_two_coords_simple(float lat1, float lon1, float lat2,
@@ -98,9 +103,7 @@ public:
   void init_loiter();
   void update_loiter_coords(float &wp0_lat, float &wp0_lon, float &wp1_lat, float &wp1_lon, float &dist_2_wp);
   void create_path_with_splines();
-  float CubicHermite(float A, float B, float C, float D, float t);
-
-private:
+  float cubic_hermite(float A, float B, float C, float D, float t);
 
   ofstream data_file;
   TopicInformation tp;
@@ -111,10 +114,14 @@ private:
   BodyVelocity body_velocity;
   vector<LoiterCoordinates> loiter_coordinates;
   PID pid_height = PID(0.1, 0.5, -0.5, 1.0, 0.0, 0.0);
-  //PID pid_landing = PID(0.1, 0.5, -0.25, 1.0, 0.0, 0.0);
   //PID pid_heading = PID(0.1, 0.5, -0.5, 0.05, 0.05, 0.0001);
   PID pid_heading = PID(0.1, 0.5, -0.5, 1.0, 0.1, 0.01);
-  PID pid_lat_cmd = PID(0.01, 3.0, -3.0, 0.6, 0.1, 0.1); // 0.01, 3.0, -3.0, 0.3, 0.1, 0.01);
+
+  //new
+  //PID pid_lat_cmd = PID(0.01, 4.0, -4.0, 0.6, 0.1, 0.1); 
+  
+  // old
+  PID pid_lat_cmd = PID(0.01, 3.0, -3.0, 0.3, 0.1, 0.01);
   bool is_north;
   bool is_east;
 

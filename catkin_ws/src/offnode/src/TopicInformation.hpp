@@ -22,30 +22,32 @@
 using namespace std;
 
 class TopicInformation{
-
+  friend class DroneControl;
+  
 public:
   TopicInformation();
   TopicInformation(ros::NodeHandle* nodehandle);
+
+protected: 
   vector<float> get_position_data();
   std::vector<mavros_msgs::Waypoint> get_waypoints();
   int get_waypoint_index();
   vector<float> get_current_waypoint();
-  vector<float> get_next_waypoint();
-  void initializeSubscribers();
   bool arm(bool arm);
   void pose(geometry_msgs::PoseStamped pose);
   void set_velocity(geometry_msgs::TwistStamped tw);
   void initialize_pose();
   void set_mode();
 
-
-  void state_cb(const mavros_msgs::State::ConstPtr& msg);
-  void nav_pos_cb(const sensor_msgs::NavSatFix::ConstPtr& msg);
-  void altitude_cb(const mavros_msgs::Altitude::ConstPtr& msg);
-  void wps_cb(const mavros_msgs::WaypointList::ConstPtr& list);
-  void heading_cb(const std_msgs::Float64::ConstPtr& msg);
-
 private:
+vector<float> get_next_waypoint();
+void initializeSubscribers();
+void state_cb(const mavros_msgs::State::ConstPtr& msg);
+void nav_pos_cb(const sensor_msgs::NavSatFix::ConstPtr& msg);
+void altitude_cb(const mavros_msgs::Altitude::ConstPtr& msg);
+void wps_cb(const mavros_msgs::WaypointList::ConstPtr& list);
+void heading_cb(const std_msgs::Float64::ConstPtr& msg);
+
 std_msgs::Float64 heading;
 ros::NodeHandle nh;
 ros::Subscriber gps_pos_;
